@@ -3,63 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAPTCHA OCR Solver</title>
+    <title>🔍 CAPTCHA OCR Solver</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-full">
-        <h1 class="text-4xl font-bold mb-6 text-center text-indigo-600">🔍 CAPTCHA OCR Solver</h1>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">🔍 CAPTCHA OCR Solver</h1>
         
-        <div class="mb-6 bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
-            <img id="captchaImage" class="mx-auto rounded max-w-full h-auto" alt="CAPTCHA Image" style="max-height: 300px; display: none;">
-            <canvas id="captchaCanvas" class="mx-auto rounded max-w-full h-auto" style="max-height: 300px;"></canvas>
+        <div class="bg-white rounded-lg shadow-xl p-8 mb-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">CAPTCHA Image</h2>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50">
+                    <canvas id="canvas" class="mx-auto max-w-full"></canvas>
+                    <div id="imageStatus" class="mt-2 text-sm text-gray-500"></div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Processing Status</h2>
+                <div id="status" class="text-lg font-medium text-gray-600 bg-blue-50 p-4 rounded-lg">
+                    ⏳ Initializing...
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Result</h2>
+                <div id="result" class="text-lg bg-gray-50 p-6 rounded-lg min-h-[100px] flex items-center justify-center">
+                    <span class="text-gray-400">Waiting for processing...</span>
+                </div>
+            </div>
         </div>
-        
-        <div id="status" class="text-center mb-4 text-lg font-semibold text-blue-600">
-            🔄 Loading image...
-        </div>
-        
-        <div id="result" class="text-center text-2xl font-bold text-green-600 bg-green-50 rounded-lg p-4 min-h-[80px] flex items-center justify-center border-2 border-green-200">
-            <span class="text-gray-400">Waiting for OCR...</span>
-        </div>
-        
-        <div class="mt-6 text-sm text-gray-500 text-center">
-            <p>💡 Tip: Add <code class="bg-gray-100 px-2 py-1 rounded">?url=YOUR_IMAGE_URL</code> to test with custom images</p>
-            <p class="mt-2">🔧 Using multiple CORS workarounds for maximum compatibility</p>
+
+        <div class="bg-blue-100 border-l-4 border-blue-500 p-4 rounded">
+            <p class="text-sm text-blue-800">
+                💡 <strong>Tip:</strong> Add <code class="bg-blue-200 px-2 py-1 rounded">?url=YOUR_IMAGE_URL</code> to test with custom images
+            </p>
         </div>
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        let imageUrl = params.get('url') || 'sample.png';
-        const img = document.getElementById('captchaImage');
-        const canvas = document.getElementById('captchaCanvas');
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const status = document.getElementById('status');
         const result = document.getElementById('result');
+        const imageStatus = document.getElementById('imageStatus');
 
-        console.log('Original URL:', imageUrl);
+        // Get image URL from query parameter or use sample
+        const urlParams = new URLSearchParams(window.location.search);
+        const originalImageUrl = urlParams.get('url') || 'sample.png';
+
+        console.log('Original Image URL:', originalImageUrl);
 
         // Try multiple CORS proxies in order of preference
         const corsProxies = [
-            '', // Try direct first for same-origin/github
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://cors-anywhere.herokuapp.com/'
+            { name: 'Direct', url: '' },
+            { name: 'AllOrigins', url: 'https://api.allorigins.win/raw?url=' },
+            { name: 'CORSProxy', url: 'https://corsproxy.io/?' },
+            { name: 'CORS Anywhere', url: 'https://cors-anywhere.herokuapp.com/' }
         ];
-
-        let currentProxyIndex = 0;
 
         function tryLoadImage(proxyIndex = 0) {
             if (proxyIndex >= corsProxies.length) {
                 status.textContent = '❌ All CORS proxies failed';
+                imageStatus.textContent = '❌ Image Load Failed';
                 result.innerHTML = `
-                    <div class="text-red-600">
+                    <div class="text-red-600 text-center">
                         <div class="text-lg font-bold mb-2">Cannot Load Image</div>
-                        <div class="text-sm">The image is blocked by CORS policy and all proxies failed.</div>
-                        <div class="text-xs mt-2 text-gray-500">
-                            Please use sample.png or provide a direct image URL without CORS restrictions.
+                        <div class="text-sm mb-2">The image is blocked by CORS policy and all proxies failed.</div>
+                        <div class="text-xs text-gray-600 mt-3 break-all">
+                            <strong>Attempted URL:</strong><br/>
+                            ${originalImageUrl}
+                        </div>
+                        <div class="text-xs mt-3 text-gray-500">
+                            Please use sample.png or provide a CORS-friendly image URL.
                         </div>
                     </div>
                 `;
@@ -67,20 +84,22 @@
             }
 
             const proxy = corsProxies[proxyIndex];
-            const needsProxy = imageUrl.startsWith('http') && 
-                              !imageUrl.includes(window.location.hostname) &&
-                              !imageUrl.includes('githubusercontent.com');
+            const needsProxy = originalImageUrl.startsWith('http') && 
+                              !originalImageUrl.includes(window.location.hostname) &&
+                              !originalImageUrl.includes('githubusercontent.com');
 
-            const finalUrl = (needsProxy && proxy) ? proxy + encodeURIComponent(imageUrl) : imageUrl;
+            const finalUrl = (needsProxy && proxy.url) ? proxy.url + encodeURIComponent(originalImageUrl) : originalImageUrl;
             
-            console.log(`Attempt ${proxyIndex + 1}: ${proxy ? 'Using proxy: ' + proxy : 'Direct load'}`);
-            status.textContent = `🔄 Loading image (attempt ${proxyIndex + 1}/${corsProxies.length})...`;
+            console.log(`Attempt ${proxyIndex + 1}/${corsProxies.length}: ${proxy.name} - ${finalUrl}`);
+            status.textContent = `🔄 Loading image via ${proxy.name} (attempt ${proxyIndex + 1}/${corsProxies.length})...`;
+            imageStatus.textContent = `⏳ Trying ${proxy.name}...`;
 
             const testImg = new Image();
             testImg.crossOrigin = 'anonymous';
             
             testImg.onload = () => {
-                console.log('✅ Image loaded successfully');
+                console.log(`✅ Image loaded successfully via ${proxy.name}`);
+                imageStatus.textContent = `✅ Loaded via ${proxy.name}`;
                 
                 // Draw to canvas to create a CORS-safe copy
                 canvas.width = testImg.width;
@@ -104,17 +123,17 @@
                     status.textContent = '✅ OCR Complete!';
                     const cleanText = text.trim();
                     result.innerHTML = `
-                        <div>
+                        <div class="text-center">
                             <div class="text-sm text-gray-500 mb-2">Recognized Text:</div>
-                            <div class="text-2xl font-bold text-green-700">${cleanText || '(No text detected)'}</div>
-                            <div class="text-xs text-gray-400 mt-2">Confidence: ${Math.round(confidence)}%</div>
+                            <div class="text-3xl font-bold text-green-700 mb-2">${cleanText || '(No text detected)'}</div>
+                            <div class="text-xs text-gray-400">Confidence: ${Math.round(confidence)}%</div>
                         </div>
                     `;
                 }).catch(err => {
                     console.error('❌ OCR Error:', err);
                     status.textContent = '❌ OCR Failed';
                     result.innerHTML = `
-                        <div class="text-red-600">
+                        <div class="text-red-600 text-center">
                             <div class="text-lg font-bold mb-2">OCR Error</div>
                             <div class="text-sm">${err.message}</div>
                         </div>
@@ -123,7 +142,8 @@
             };
 
             testImg.onerror = () => {
-                console.log(`❌ Attempt ${proxyIndex + 1} failed, trying next...`);
+                console.log(`❌ ${proxy.name} failed, trying next...`);
+                imageStatus.textContent = `❌ ${proxy.name} failed`;
                 tryLoadImage(proxyIndex + 1);
             };
 
