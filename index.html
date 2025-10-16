@@ -1,35 +1,108 @@
 <!DOCTYPE html>
-<html><head>
-<meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>
-<title>CAPTCHA Solver</title>
-<script src='https://cdn.tailwindcss.com'></script>
-<script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
-</head><body class='bg-gray-100 min-h-screen flex items-center justify-center p-4'>
-<div class='bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full'>
-<h1 class='text-3xl font-bold mb-6 text-center'>CAPTCHA OCR Solver</h1>
-<div class='mb-6'><img id='captchaImage' class='mx-auto border rounded max-w-full' alt='CAPTCHA'></div>
-<div id='status' class='text-center mb-4 text-lg font-semibold text-blue-600'>Loading...</div>
-<div id='result' class='text-center text-2xl font-bold text-green-600'></div>
-</div>
-<script>
-const params = new URLSearchParams(window.location.search);
-const imageUrl = params.get('url') || 'sample.png';
-const img = document.getElementById('captchaImage');
-const status = document.getElementById('status');
-const result = document.getElementById('result');
-img.src = imageUrl;
-img.onload = () => {
-  status.textContent = 'Running OCR...';
-  Tesseract.recognize(imageUrl, 'eng', {
-    logger: m => { if(m.status === 'recognizing text') status.textContent = 'OCR Progress: ' + Math.round(m.progress * 100) + '%'; }
-  }).then(({ data: { text } }) => {
-    status.textContent = 'OCR Complete!';
-    result.textContent = 'Recognized Text: ' + text.trim();
-  }).catch(err => {
-    status.textContent = 'OCR Error';
-    result.textContent = 'Error: ' + err.message;
-  });
-};
-img.onerror = () => { status.textContent = 'Image load failed'; result.textContent = 'Error loading: ' + imageUrl; };
-</script>
-</body></html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAPTCHA OCR Solver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-full">
+        <h1 class="text-4xl font-bold mb-6 text-center text-indigo-600">🔍 CAPTCHA OCR Solver</h1>
+        
+        <div class="mb-6 bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+            <img id="captchaImage" crossorigin="anonymous" class="mx-auto rounded max-w-full h-auto" alt="CAPTCHA Image" style="max-height: 300px;">
+        </div>
+        
+        <div id="status" class="text-center mb-4 text-lg font-semibold text-blue-600">
+            🔄 Loading image...
+        </div>
+        
+        <div id="result" class="text-center text-2xl font-bold text-green-600 bg-green-50 rounded-lg p-4 min-h-[80px] flex items-center justify-center border-2 border-green-200">
+            <span class="text-gray-400">Waiting for OCR...</span>
+        </div>
+        
+        <div class="mt-6 text-sm text-gray-500 text-center">
+            <p>💡 Tip: Add <code class="bg-gray-100 px-2 py-1 rounded">?url=YOUR_IMAGE_URL</code> to test with custom images</p>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        let imageUrl = params.get('url') || 'sample.png';
+        const img = document.getElementById('captchaImage');
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+
+        console.log('Original URL:', imageUrl);
+
+        // CORS FIX: Use proxy for external URLs
+        const needsProxy = imageUrl.startsWith('http') && 
+                          !imageUrl.includes(window.location.hostname) &&
+                          !imageUrl.includes('github.io') &&
+                          !imageUrl.startsWith('data:');
+
+        if (needsProxy) {
+            console.log('Applying CORS proxy...');
+            imageUrl = 'https://corsproxy.io/?' + encodeURIComponent(imageUrl);
+            status.textContent = '🔄 Loading via CORS proxy...';
+        }
+
+        console.log('Final URL:', imageUrl);
+        img.src = imageUrl;
+
+        img.onload = () => {
+            console.log('✅ Image loaded successfully');
+            status.textContent = '🤖 Running OCR...';
+            result.innerHTML = '<span class="text-gray-400">Processing...</span>';
+            
+            // Pass the loaded img element directly to Tesseract
+            Tesseract.recognize(img, 'eng', {
+                logger: info => {
+                    console.log(info);
+                    if (info.status === 'recognizing text') {
+                        const percent = Math.round(info.progress * 100);
+                        status.textContent = `🤖 OCR Progress: ${percent}%`;
+                    }
+                }
+            }).then(({ data: { text, confidence } }) => {
+                console.log('✅ OCR Complete:', text);
+                status.textContent = '✅ OCR Complete!';
+                const cleanText = text.trim();
+                result.innerHTML = `
+                    <div>
+                        <div class="text-sm text-gray-500 mb-2">Recognized Text:</div>
+                        <div class="text-2xl font-bold text-green-700">${cleanText || '(No text detected)'}</div>
+                        <div class="text-xs text-gray-400 mt-2">Confidence: ${Math.round(confidence)}%</div>
+                    </div>
+                `;
+            }).catch(err => {
+                console.error('❌ OCR Error:', err);
+                status.textContent = '❌ OCR Failed';
+                result.innerHTML = `
+                    <div class="text-red-600">
+                        <div class="text-lg font-bold mb-2">Error</div>
+                        <div class="text-sm">${err.message}</div>
+                        <div class="text-xs mt-2 text-gray-500">Check browser console for details</div>
+                    </div>
+                `;
+            });
+        };
+
+        img.onerror = (e) => {
+            console.error('❌ Image load failed:', e);
+            status.textContent = '❌ Image Load Failed';
+            result.innerHTML = `
+                <div class="text-red-600">
+                    <div class="text-lg font-bold mb-2">Image Load Error</div>
+                    <div class="text-sm">Could not load: ${imageUrl.substring(0, 50)}...</div>
+                    <div class="text-xs mt-2 text-gray-500">
+                        Possible CORS issue. Try using sample.png or a different image.
+                    </div>
+                </div>
+            `;
+        };
+    </script>
+</body>
+</html>
