@@ -1,1 +1,35 @@
-<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>CAPTCHA Solver</title><script src='https://cdn.tailwindcss.com'></script><script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script></head><body class='bg-gray-100 min-h-screen flex items-center justify-center p-4'><div class='bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full'><h1 class='text-3xl font-bold mb-6 text-center'>CAPTCHA OCR Solver</h1><div class='mb-6'><img id='captchaImage' class='mx-auto border rounded max-w-full' alt='CAPTCHA'></div><div id='status' class='text-center mb-4 text-lg font-semibold text-blue-600'>Loading...</div><div id='result' class='text-center text-2xl font-bold text-green-600'></div></div><script>const params = new URLSearchParams(window.location.search);const imageUrl = params.get('url') || 'sample.png';const img = document.getElementById('captchaImage');const status = document.getElementById('status');const result = document.getElementById('result');img.src = imageUrl;img.onload = () => {  status.textContent = 'Running OCR...';  Tesseract.recognize(imageUrl, 'eng', {    logger: m => { if(m.status === 'recognizing text') status.textContent = 'OCR Progress: ' + Math.round(m.progress * 100) + '%'; }  }).then(({ data: { text } }) => {    status.textContent = 'OCR Complete!';    result.textContent = 'Recognized Text: ' + text.trim();  }).catch(err => {    status.textContent = 'OCR Error';    result.textContent = 'Error: ' + err.message;  });};img.onerror = () => { status.textContent = 'Image load failed'; result.textContent = 'Error loading: ' + imageUrl; };</script></body></html>
+<!DOCTYPE html>
+<html><head>
+<meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>CAPTCHA Solver</title>
+<script src='https://cdn.tailwindcss.com'></script>
+<script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
+</head><body class='bg-gray-100 min-h-screen flex items-center justify-center p-4'>
+<div class='bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full'>
+<h1 class='text-3xl font-bold mb-6 text-center'>CAPTCHA OCR Solver</h1>
+<div class='mb-6'><img id='captchaImage' class='mx-auto border rounded max-w-full' alt='CAPTCHA'></div>
+<div id='status' class='text-center mb-4 text-lg font-semibold text-blue-600'>Loading...</div>
+<div id='result' class='text-center text-2xl font-bold text-green-600'></div>
+</div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const imageUrl = params.get('url') || 'sample.png';
+const img = document.getElementById('captchaImage');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+img.src = imageUrl;
+img.onload = () => {
+  status.textContent = 'Running OCR...';
+  Tesseract.recognize(imageUrl, 'eng', {
+    logger: m => { if(m.status === 'recognizing text') status.textContent = 'OCR Progress: ' + Math.round(m.progress * 100) + '%'; }
+  }).then(({ data: { text } }) => {
+    status.textContent = 'OCR Complete!';
+    result.textContent = 'Recognized Text: ' + text.trim();
+  }).catch(err => {
+    status.textContent = 'OCR Error';
+    result.textContent = 'Error: ' + err.message;
+  });
+};
+img.onerror = () => { status.textContent = 'Image load failed'; result.textContent = 'Error loading: ' + imageUrl; };
+</script>
+</body></html>
